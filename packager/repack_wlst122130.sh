@@ -3,74 +3,107 @@
 WORKING_DIR=$PWD
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )
 
-WLS_INSTALLER_PATH=$1
+PROVIDED_JDK_PATH=$1
+WLS_INSTALLER_ZIP_PATH=$2
+DESTINATION_FOLDER=$3
+
+if [ -z "$DESTINATION_FOLDER" ]; then
+    DESTINATION_FOLDER=$WORKING_DIR
+fi
+
 
 
 echo "Creating temporary folders"
 TEMP_FOLDER=$(mktemp -d)
-TEMP_FOLDER_INSTALL=$(mktemp -d)
-echo "Folders $TEMP_FOLDER and $TEMP_FOLDER_INSTALL created"
+ORACLE_HOME=$TEMP_FOLDER/ORACLE_HOME
+TEMP_ORAINV=$TEMP_FOLDER/orainv.loc
+TEMP_RESPONSEFILE=$TEMP_FOLDER/responseFile
 
-unzip "$WLS_INSTALLER_PATH" -d $TEMP_FOLDER
-mkdir -p $TEMP_FOLDER/fmw_12.2.1.3.0_wls
-unzip $TEMP_FOLDER/fmw_12.2.1.3.0_wls.jar -d $TEMP_FOLDER/fmw_12.2.1.3.0_wls
+echo "Created temporary directory $TEMP_FOLDER"
 
-mkdir $TEMP_FOLDER_INSTALL/{oracle_common,wlserver}
-ORACLE_COMMONS_FOLDER=$TEMP_FOLDER_INSTALL/oracle_common
-WLSERVER_FOLDER=$TEMP_FOLDER_INSTALL/wlserver
+mkdir $ORACLE_HOME
+touch $TEMP_ORAINV
+touch $TEMP_RESPONSEFILE
 
-cd "$ORACLE_COMMONS_FOLDER"
-BASEPATH=$TEMP_FOLDER/fmw_12.2.1.3.0_wls/Disk1/stage/Components
+echo "Created folder $ORACLE_HOME"
+echo "Created file $TEMP_ORAINV"
+echo "Created file $TEMP_RESPONSEFILE"
+echo
+echo "Unpacking provided jdk..."
+tar -C $TEMP_FOLDER -zxf $PROVIDED_JDK_PATH 
+JAVA_EXEC=$(find $TEMP_FOLDER -maxdepth 3 -name java -type f)
+JAVA_HOME=${JAVA_EXEC%/bin/java}
+echo "JDK unpacked to "$JAVA_HOME
+echo
 
-unzip $BASEPATH/oracle.apache.commons.collections.mod/3.2.0.0.2/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.apache.commons.lang.mod/2.6.0.0.2/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.java.servlet/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.javavm.jrf/12.2.0.1.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.jrf.thirdparty.toplink/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.jrf.toplink/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.org.apache.ant.ant.bundle/1.9.8.0.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.webservices.base/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.webservices.wls/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.core.app.server/12.2.1.3.0/DataFiles/filegroup6.jar
-unzip $BASEPATH/oracle.wls.jrf.tenancy.common.sharedlib/12.2.1.3.0/DataFiles/filegroup2.jar
-unzip $BASEPATH/oracle.wls.shared.with.coh.standalone/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.shared.with.inst.sharedlib/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.shared.with.inst/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.thirdparty.javax.json/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.wlsportable.mod/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/org.codehaus.woodstox/4.2.0.0.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.libraries/12.2.1.3.0/DataFiles/filegroup2.jar
-unzip $BASEPATH/oracle.joda.time.joda.time/2.9.4.0.0/DataFiles/filegroup1.jar
+echo "inventory_loc=$ORACLE_HOME/.inventory"        >   $TEMP_ORAINV
+echo "inst_group=nobody"                            >>  $TEMP_ORAINV
 
+echo "[ENGINE]"                                     >   $TEMP_RESPONSEFILE
+echo "Response File Version=1.0.0.0.0"              >>  $TEMP_RESPONSEFILE
+echo "[GENERIC]"                                    >>  $TEMP_RESPONSEFILE
+echo "INSTALL_TYPE=WebLogic Server"                 >>  $TEMP_RESPONSEFILE
+echo "SOFTWARE ONLY TYPE=true"                      >>  $TEMP_RESPONSEFILE
+echo "DECLINE_SECURITY_UPDATES=true"                >>  $TEMP_RESPONSEFILE
+echo "SECURITY_UPDATES_VIA_MYORACLESUPPORT=false"   >>  $TEMP_RESPONSEFILE
 
-cd "$WLSERVER_FOLDER"
-BASEPATH=$TEMP_FOLDER/fmw_12.2.1.3.0_wls/Disk1/stage/Components
+echo
+echo "Unzipping Weblogic Server 12.2.1.3.0 installer"
+unzip "$WLS_INSTALLER_ZIP_PATH" -d $TEMP_FOLDER
 
-cp $TEMP_FOLDER/fmw_12.2.1.3.0_wls/Disk1/install/modules/com.oracle.cie.comdev_7.8.2.0.jar ./modules/
+echo
+echo "Installing Weblogic Server 12.2.1.3.0"
+$JAVA_HOME/bin/java -jar $TEMP_FOLDER/fmw_12.2.1.3.0_wls.jar \
+-silent \
+-responseFile $TEMP_RESPONSEFILE \
+-invPtrLoc $TEMP_ORAINV \
+-jreLoc $JAVA_HOME \
+-ignoreSysPrereqs -force -novalidation \
+ORACLE_HOME=$ORACLE_HOME \
+INSTALL_TYPE="WebLogic Server"
 
-unzip $BASEPATH/com.bea.core.xml.xmlbeans/2.6.2.0.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.fmwconfig.common.config.shared/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.fmwconfig.common.shared/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.fmwconfig.common.wls.shared.internal/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.glcm.dependency/1.8.2.0.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.glcm.wizard/7.8.2.0.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.common.cam.wlst/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.common.nodemanager/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.core.app.server/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.jrf.tenancy.common.sharedlib/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.jrf.tenancy.common/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.jrf.tenancy.ee.only.sharedlib/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.libraries/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.security.core.sharedlib/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.security.core/12.2.1.3.0/DataFiles/filegroup1.jar
-unzip $BASEPATH/oracle.wls.shared.with.cam/12.2.1.3.0/DataFiles/filegroup1.jar
+echo
+cd "$ORACLE_HOME/wlserver/server/lib/"
+java -jar wljarbuilder.jar
+echo
 
-cd "$WORKING_DIR"
-cd "$WLSERVER_FOLDER/server/lib/"
-java -jar wljarbuilder.jar -verbose
+mkdir -p "$DESTINATION_FOLDER/wlst-122130"
+WLST_FOLDER="$DESTINATION_FOLDER/wlst-122130/"
 
-cp $TEMP_FOLDER_INSTALL/wlserver/server/lib/wlfullclient.jar "$WORKING_DIR/wls122130_wlfullclient.jar"
+cp \
+$ORACLE_HOME/wlserver/server/lib/wlfullclient.jar                               \
+$ORACLE_HOME/wlserver/modules/com.oracle.core.weblogic.msgcat.jar               \
+$ORACLE_HOME/wlserver/modules/com.bea.core.xml.xmlbeans.jar                     \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.comdev_7.8.2.0.jar            \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.dependency_1.8.2.0.jar        \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.wizard_7.8.2.0.jar            \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.encryption_2.6.0.0.jar        \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.service-table_1.6.0.0.jar     \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-owsm_8.6.0.0.jar       \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-security_8.6.0.0.jar   \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.config_8.6.0.0.jar            \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-wls-schema_8.6.0.0.jar \
+$ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-wls_8.6.0.0.jar        \
+$ORACLE_HOME/wlserver/common/wlst/modules/jython-modules.jar                    \
+"$WLST_FOLDER"
 
+echo "Copied files":
+echo "  $ORACLE_HOME/wlserver/server/lib/wlfullclient.jar"
+echo "  $ORACLE_HOME/wlserver/modules/com.oracle.core.weblogic.msgcat.jar"
+echo "  $ORACLE_HOME/wlserver/modules/com.bea.core.xml.xmlbeans.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.comdev_7.8.2.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.dependency_1.8.2.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.wizard_7.8.2.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.encryption_2.6.0.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.service-table_1.6.0.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-owsm_8.6.0.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-security_8.6.0.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.config_8.6.0.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-wls-schema_8.6.0.0.jar"
+echo "  $ORACLE_HOME/oracle_common/modules/com.oracle.cie.config-wls_8.6.0.0.jar"
+echo "  $ORACLE_HOME/wlserver/common/wlst/modules/jython-modules.jar"
+echo "to folder $WLST_FOLDER"
+echo
 
-echo "Deleting $TEMP_FOLDER and $TEMP_FOLDER_INSTALL"
-# rm -rf "$TEMP_FOLDER" "$TEMP_FOLDER_INSTALL"
+echo "Deleting $TEMP_FOLDER and all it's contents!"
+rm -rf "$TEMP_FOLDER"
