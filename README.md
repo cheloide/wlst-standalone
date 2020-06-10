@@ -3,8 +3,8 @@
 ## Tool to create a wlst standalone without the bloat of a Weblogic Installation.
 
 ### Downloads 
-* Weblogic Server 12.2.1.3.0 installer: http://download.oracle.com/otn/nt/middleware/12c/12213/fmw_12.2.1.3.0_wls_Disk1_1of1.zip
-* Server JRE 8u211: https://download.oracle.com/otn/java/jdk/8u221-b11/230deb18db3e4014bb8e3e8324f81b43/server-jre-8u221-linux-x64.tar.gz
+* Weblogic Server 12.2.1.3.0 installer: (fmw_12.2.1.3.0_wls_disk1_1of1.zip): https://www.oracle.com/middleware/technologies/weblogic-server-downloads.html
+* Server JRE8: https://www.oracle.com/java/technologies/javase-server-jre8-downloads.html
 
 ### Usage
 
